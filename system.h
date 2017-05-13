@@ -92,6 +92,7 @@ protected:
 
 		components.emplace_back(args...);
 		ids.push_back(id);
+		OnAdd(id, components.back());
 
 		return &components.back();
 	}
@@ -107,6 +108,7 @@ protected:
 			if(i <= it)
 				--it;
 
+			OnRemove(id, components[i]);
 			components.erase(components.begin() + i);
 			ids.erase(ids.begin() + i);
 			break;
@@ -143,7 +145,17 @@ protected:
 	/**
 	 * Per-component update to optionally override.
 	 */
-	virtual void Manage(uint64_t eid, C &c) {}
+	virtual void Manage(uint64_t eid, C &c) { };
+
+	/**
+	 * Per-component override called immediately after component construction.
+	 */
+	virtual void OnAdd(uint64_t eid, C &c) { };
+
+	/**
+	 * Per-component override called immediately before component destruction.
+	 */
+	virtual void OnRemove(uint64_t eid, C &c) { };
 
 	/**
 	 * Used by non-implicit systems to get the typeid for the type contained,
@@ -168,8 +180,6 @@ protected:
 template<typename C>
 struct System : SystemBase<C> {
 	virtual ~System() {}
-
-	void Manage() {}
 };
 
 #endif
