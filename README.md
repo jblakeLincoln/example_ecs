@@ -120,7 +120,7 @@ made once per frame.
 ``` cpp
 template<>
 struct System<Health> : SystemBase<Health> {
-	void Manage(uint64_t entity_id, Health &h) {
+	void Manage(Entity &e, Health &h) {
 		if(h.data <= 0) {
 			/* Perform some death logic. */
 		}
@@ -134,10 +134,9 @@ between entities. Another system might be this:
 ``` cpp
 template<>
 struct System<PoisonDamage> : System<PoisonDamage> {
-	void Manage(uint64_t entity_id, PoisonDamage &p) {
-		Entity *e = mgr->GetByID(entity_id);
-		if(e->Has<Health>())
-			e->Get<Health>()->data -= p->damage_rate;
+	void Manage(Entity &e, PoisonDamage &p) {
+		if(e.Has<Health>())
+			e.Get<Health>()->data -= p->damage_rate;
 	}
 };
 ```
@@ -165,11 +164,10 @@ struct PoisonDamage {
 
 template<>
 struct System<PoisonDamage> : SystemBase<PoisonDamage> {
-	void Manage(uint64_t entity_id, PoisonDamage &p) {
+	void Manage(Entity &e, PoisonDamage &p) {
 		/* ID in the Manage function is guaranteed to be valid. */
-		Entity *e = mgr->GetByID(entity_id);
-		if(e->Has<Health>())
-			e->Get<Health>()->data -= p->damage_rate;
+		if(e.Has<Health>())
+			e.Get<Health>()->data -= p->damage_rate;
 	}
 };
 

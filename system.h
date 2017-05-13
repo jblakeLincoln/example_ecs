@@ -54,7 +54,7 @@ protected:
 	/**
 	 * Remove a component for the specified entity.
 	 */
-	virtual void RemoveComponent(uint64_t id) = 0;
+	virtual void RemoveComponent(Entity*) = 0;
 
 	virtual uint32_t GetPriority() const = 0;
 };
@@ -74,7 +74,7 @@ protected:
 	 * index.
 	 */
 	std::vector<C> components;
-	std::vector<uint64_t> ids;
+	std::vector<Entity*> entities;
 	size_t it = 0;
 
 	SystemBase()
@@ -86,15 +86,15 @@ protected:
 	 * the ID of the entity to which it is linked.
 	 */
 	template<typename... Args>
-	C *AddComponent(uint64_t id, Args &&...args) {
-		C *out = GetComponent(id);
+	C *AddComponent(Entity *e, Args &&...args) {
+		C *out = GetComponent(e);
 
 		if(out != nullptr)
 			return out;
 
 		components.emplace_back(args...);
-		ids.push_back(id);
-		OnAdd(id, components.back());
+		entities.push_back(e);
+		OnAdd(*e, components.back());
 
 		return &components.back();
 	}
@@ -102,17 +102,17 @@ protected:
 	/**
 	 * Remove a component for a specified entity.
 	 */
-	void RemoveComponent(uint64_t id) {
+	void RemoveComponent(Entity *e) {
 		for(size_t i = 0; i < components.size(); ++i) {
-			if(ids[i] != id)
+			if(entities[i] != e)
 				continue;
 
 			if(i <= it)
 				--it;
 
-			OnRemove(id, components[i]);
+			OnRemove(*e, components[i]);
 			components.erase(components.begin() + i);
-			ids.erase(ids.begin() + i);
+			entities.erase(entities.begin() + i);
 			break;
 		}
 	}
@@ -121,14 +121,14 @@ protected:
 	 * Retrieve a component for a specified entity, or nullptr if it is not
 	 * found.
 	 */
-	C *GetComponent(uint64_t id) {
+	C *GetComponent(Entity *e) {
 		size_t i = 0;
-		for(i = 0; i < ids.size(); ++i) {
-			if(ids[i] == id)
+		for(i = 0; i < entities.size(); ++i) {
+			if(entities[i] == e)
 				break;
 		}
 
-		if(i == ids.size())
+		if(i == entities.size())
 			return nullptr;
 
 		return &components[i];
@@ -140,24 +140,24 @@ protected:
 	 */
 	virtual void Manage() {
 		for(it = 0; it < components.size(); ++it) {
-			Manage(ids[it], components[it]);
+			Manage(*entities[it], components[it]);
 		}
 	}
 
 	/**
 	 * Per-component update to optionally override.
 	 */
-	virtual void Manage(uint64_t eid, C &c) { };
+	virtual void Manage(Entity &e, C &c) { };
 
 	/**
 	 * Per-component override called immediately after component construction.
 	 */
-	virtual void OnAdd(uint64_t eid, C &c) { };
+	virtual void OnAdd(Entity &e, C &c) { };
 
 	/**
 	 * Per-component override called immediately before component destruction.
 	 */
-	virtual void OnRemove(uint64_t eid, C &c) { };
+	virtual void OnRemove(Entity &e, C &c) { };
 
 	/**
 	 * Used by non-implicit systems to get the typeid for the type contained,

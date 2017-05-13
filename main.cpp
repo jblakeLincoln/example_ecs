@@ -26,20 +26,18 @@ struct PoisonDamage {
 
 template<>
 struct System<Health> : SystemBase<Health, 0> {
-	void Manage(uint64_t id, Health &h) {
+	void Manage(Entity &e, Health &h) {
 		/* When health drops to or below zero, the entity can be removed. */
 		if(h.data <= 0)
-			mgr->GetByID(id)->Destroy();
+			e.Destroy();
 	}
 };
 
 template<>
 struct System<PoisonDamage> : SystemBase<PoisonDamage> {
-	void Manage(uint64_t id, PoisonDamage &p) {
-		Entity *e = mgr->GetByID(id);
-
-		if(e->Has<Health>())
-			e->Get<Health>()->data -= p.dmg_rate;
+	void Manage(Entity &e, PoisonDamage &p) {
+		if(e.Has<Health>())
+			e.Get<Health>()->data -= p.dmg_rate;
 	}
 };
 

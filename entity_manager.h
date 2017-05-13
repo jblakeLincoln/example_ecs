@@ -279,9 +279,9 @@ T* Entity::Add(const Args &...args) {
 	uint64_t cid = mgr->systems.GetComponentID(typeid(T*));
 
 	if(components[cid] == true)
-		return mgr->GetSystem<T>()->GetComponent(id);
+		return mgr->GetSystem<T>()->GetComponent(this);
 
-	T *ret = mgr->GetSystem<T>()->AddComponent(id, args...);
+	T *ret = mgr->GetSystem<T>()->AddComponent(this, args...);
 	components.set(cid, true);
 	return ret;
 }
@@ -292,12 +292,12 @@ T* Entity::Get() {
 	if(components[cid] == false)
 		return nullptr;
 
-	return mgr->GetSystem<T>()->GetComponent(id);
+	return mgr->GetSystem<T>()->GetComponent(this);
 }
 
 template<typename T>
 void Entity::Remove() {
-	mgr->GetSystem<T>()->RemoveComponent(id);
+	mgr->GetSystem<T>()->RemoveComponent(this);
 	components.set(mgr->systems.GetComponentID(typeid(T*)), false);
 }
 
@@ -430,7 +430,7 @@ void EntityManager::Entities::Destroy(Systems &mgr_systems, Entity *e) {
 	for(size_t i = 0; i < e->components.size(); ++i) {
 		if(e->components[i] == false)
 			continue;
-		mgr_systems.Get(i)->RemoveComponent(e->id);
+		mgr_systems.Get(i)->RemoveComponent(e);
 	}
 
 	entities.erase(e->id);
