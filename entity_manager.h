@@ -16,98 +16,9 @@
  * lifetimes of and interactions with entities and systems, some of which are
  * made public through EntityManager functions.
  */
+struct Entity;
 struct EntityManager {
-	struct Entity {
-		friend EntityManager;
-
-	private:
-		/**
-		 * Destruction happens through the Destroy function, handled by the
-		 * manager.
-		 */
-		~Entity() {}
-
-		/**
-		 * Stores a pointer to the EntityManager to which it belongs, the ID by
-		 * which the manager and systems refer to it, and a bitset of attached
-		 * components for speedy lookup of what the entity owns.
-		 */
-		EntityManager *mgr;
-		uint64_t id;
-		std::bitset<MAX_COMPONENTS> components;
-
-	protected:
-		/**
-		 * Construction is performed by the EntityManager, when it passes
-		 * through a pointer to itself.
-		 */
-		Entity(EntityManager *mgr_in)
-			: mgr(mgr_in)
-		{}
-
-		/**
-		 * Check the entity for having a provided list of components, by
-		 * iterating over types in a tuple, provided by the public Has<>().
-		 */
-		template<std::size_t I = 0, typename... Type>
-		inline typename std::enable_if<I < sizeof...(Type), bool>::type
-		HasComponent(const std::tuple<Type...> &t);
-
-		/**
-		 * Go to the next type in the HasComponent tuple.
-		 */
-		template<std::size_t I = 0, typename... Type>
-		inline typename std::enable_if<I == sizeof...(Type), bool>::type
-		HasComponent(const std::tuple<Type...> &t);
-
-	public:
-		uint64_t GetID() {
-			return id;
-		}
-
-		/**
-		 * Construct a new component to attach to the entity, constructed in
-		 * place in the relevant system with the constructor arguments
-		 * provided.
-		 *
-		 * Returns the newly constructed component.
-		 */
-		template<typename T, typename... Args>
-		T* Add(const Args &...args);
-
-		/**
-		 * Retrieve a component type for the entity. Returns a component if it
-		 * exists, otherwise nullptr.
-		 */
-		template<typename T>
-		T* Get();
-
-		/**
-		 * Removes a selected type of component, or does nothing if the
-		 * component type is not attached.
-		 */
-		template<typename T>
-		void Remove();
-
-		/**
-		 * Check if the system has components of the specified types. True if
-		 * the entity holds all provided types, otherwise. false.
-		 *
-		 * When checking typeid, we __always__ refer to the type of a pointer
-		 * of a component, rather than the components themselves, which means
-		 * when dealing with multiple types and creating a tuple, we don't
-		 * construct components.
-		 */
-		template<typename First, typename... Types>
-		bool Has();
-
-		/**
-		 * Destroy the entity, having it removed from the manager and all
-		 * attached components destroyed.
-		 */
-		void Destroy();
-	};
-
+friend Entity;
 protected:
 	/**
 	 * The EntityManager holds an instance of a system for each type that gets
@@ -240,8 +151,100 @@ public:
 	}
 };
 
-/* Typedef for external use. */
-typedef EntityManager::Entity Entity;
+/**
+ * An Entity is a object that owns components - sets of data that are operated.
+ * The entity is not a specific thing, but is a general container which is
+ * composed of different properties.
+ */
+struct Entity {
+friend EntityManager;
+private:
+	/**
+	 * Destruction happens through the Destroy function, handled by the
+	 * manager.
+	 */
+	~Entity() {}
+
+	/**
+	 * Stores a pointer to the EntityManager to which it belongs, the ID by
+	 * which the manager and systems refer to it, and a bitset of attached
+	 * components for speedy lookup of what the entity owns.
+	 */
+	EntityManager *mgr;
+	uint64_t id;
+	std::bitset<MAX_COMPONENTS> components;
+
+protected:
+	/**
+	 * Construction is performed by the EntityManager, when it passes
+	 * through a pointer to itself.
+	 */
+	Entity(EntityManager *mgr_in)
+		: mgr(mgr_in)
+	{}
+
+	/**
+	 * Check the entity for having a provided list of components, by
+	 * iterating over types in a tuple, provided by the public Has<>().
+	 */
+	template<std::size_t I = 0, typename... Type>
+	inline typename std::enable_if<I < sizeof...(Type), bool>::type
+	HasComponent(const std::tuple<Type...> &t);
+
+	/**
+	 * Go to the next type in the HasComponent tuple.
+	 */
+	template<std::size_t I = 0, typename... Type>
+	inline typename std::enable_if<I == sizeof...(Type), bool>::type
+	HasComponent(const std::tuple<Type...> &t);
+
+public:
+	uint64_t GetID() {
+		return id;
+	}
+
+	/**
+	 * Construct a new component to attach to the entity, constructed in
+	 * place in the relevant system with the constructor arguments
+	 * provided.
+	 *
+	 * Returns the newly constructed component.
+	 */
+	template<typename T, typename... Args>
+	T* Add(const Args &...args);
+
+	/**
+	 * Retrieve a component type for the entity. Returns a component if it
+	 * exists, otherwise nullptr.
+	 */
+	template<typename T>
+	T* Get();
+
+	/**
+	 * Removes a selected type of component, or does nothing if the
+	 * component type is not attached.
+	 */
+	template<typename T>
+	void Remove();
+
+	/**
+	 * Check if the system has components of the specified types. True if
+	 * the entity holds all provided types, otherwise. false.
+	 *
+	 * When checking typeid, we __always__ refer to the type of a pointer
+	 * of a component, rather than the components themselves, which means
+	 * when dealing with multiple types and creating a tuple, we don't
+	 * construct components.
+	 */
+	template<typename First, typename... Types>
+	bool Has();
+
+	/**
+	 * Destroy the entity, having it removed from the manager and all
+	 * attached components destroyed.
+	 */
+	void Destroy();
+};
 
 /*************************************
  * EntityManager functions
@@ -271,9 +274,8 @@ void EntityManager::AddSystem(const Args &...args)
 /**************************************
  * Entity functions
  **************************************/
-
 template<typename T, typename... Args>
-T* EntityManager::Entity::Add(const Args &...args) {
+T* Entity::Add(const Args &...args) {
 	uint64_t cid = mgr->systems.GetComponentID(typeid(T*));
 
 	if(components[cid] == true)
@@ -285,7 +287,7 @@ T* EntityManager::Entity::Add(const Args &...args) {
 }
 
 template<typename T>
-T* EntityManager::Entity::Get() {
+T* Entity::Get() {
 	uint64_t cid = mgr->systems.GetComponentID(typeid(T*));
 	if(components[cid] == false)
 		return nullptr;
@@ -294,7 +296,7 @@ T* EntityManager::Entity::Get() {
 }
 
 template<typename T>
-void EntityManager::Entity::Remove() {
+void Entity::Remove() {
 	mgr->GetSystem<T>()->RemoveComponent(id);
 	components.set(mgr->systems.GetComponentID(typeid(T*)), false);
 }
@@ -328,7 +330,7 @@ bool Entity::Has() {
 	return HasComponent(std::tuple<Types*...>());
 }
 
-void EntityManager::Entity::Destroy() {
+void Entity::Destroy() {
 	mgr->entities.Destroy(mgr->systems, this);
 }
 

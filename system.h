@@ -15,6 +15,7 @@
  * for that action.
  */
 
+struct Entity;
 struct EntityManager;
 
 /**
@@ -22,7 +23,8 @@ struct EntityManager;
  * containers. The stored type_index refers to the component type.
  */
 struct ISystem {
-	friend EntityManager;
+friend Entity;
+friend EntityManager;
 private:
 	/**
 	 * Never used. "type" initialisation required for compilation.
@@ -63,8 +65,8 @@ protected:
  */
 template<typename C, uint32_t Priority = UINT8_MAX>
 struct SystemBase : ISystem {
-	friend EntityManager;
-
+friend Entity;
+friend EntityManager;
 protected:
 	/**
 	 * Components are stored contiguously in memory. "components" and "ids"
