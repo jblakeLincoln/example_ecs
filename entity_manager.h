@@ -37,9 +37,7 @@ protected:
 		 * systems deemed "owned" by the systems array - though this doesn't
 		 * actually come into play at any point.
 		 */
-		uint64_t component_ids = 0;
 		ISystem* systems[MAX_COMPONENTS];
-		std::unordered_map<std::type_index, uint64_t> id_lookup;
 		std::vector<ISystem*> systems_prioritised;
 
 	public:
@@ -54,24 +52,17 @@ protected:
 		/**
 		 * Store an ISystem pointer for a specific component type.
 		 */
-		void Add(EntityManager *mgr, const std::type_index&, ISystem*);
+		void Add(EntityManager *mgr, uint16_t cid, ISystem*);
 
 		/**
 		 * Check if a system exists for a specific component type.
 		 */
-		bool Has(const std::type_index&);
-
-		/** Retrieve systems by:
-		 *    - component type
-		 *    - component ID
-		 */
-		ISystem* Get(const std::type_index &type);
-		ISystem* Get(uint64_t id);
+		bool Has(uint16_t cid);
 
 		/**
-		 * Retrieve a component ID for a component type.
+		 * Retrieve system by component ID
 		 */
-		uint64_t GetComponentID(const std::type_index &type);
+		ISystem* Get(uint16_t cid);
 	} systems;
 
 	struct Entities {
@@ -230,11 +221,6 @@ public:
 	/**
 	 * Check if the system has components of the specified types. True if
 	 * the entity holds all provided types, otherwise. false.
-	 *
-	 * When checking typeid, we __always__ refer to the type of a pointer
-	 * of a component, rather than the components themselves, which means
-	 * when dealing with multiple types and creating a tuple, we don't
-	 * construct components.
 	 */
 	template<typename First, typename... Types>
 	bool Has();
@@ -252,23 +238,19 @@ public:
 template<typename T>
 System<T>* EntityManager::GetSystem()
 {
-	const std::type_index type = typeid(T*);
+	if(systems.Has(T::component_id) == false)
+		systems.Add(this, T::component_id, new System<T>());
 
-	if(systems.Has(type) == false)
-		systems.Add(this, type, new System<T>());
-
-	return static_cast<System<T>*>(systems.Get(type));
+	return static_cast<System<T>*>(systems.Get(T::component_id));
 }
 
 template<typename T, typename ... Args>
 void EntityManager::AddSystem(const Args &...args)
 {
-	const std::type_index type = T::GetType();
-
-	if(systems.Has(type) == true)
+	if(systems.Has(T::component_id) == true)
 		return;
 
-	systems.Add(this, type, new T(args...));
+	systems.Add(this, T::component_id, new T(args...));
 }
 
 /**************************************
@@ -276,7 +258,7 @@ void EntityManager::AddSystem(const Args &...args)
  **************************************/
 template<typename T, typename... Args>
 T* Entity::Add(const Args &...args) {
-	uint64_t cid = mgr->systems.GetComponentID(typeid(T*));
+	uint16_t cid = T::component_id;
 
 	if(components[cid] == true)
 		return mgr->GetSystem<T>()->GetComponent(this);
@@ -288,7 +270,7 @@ T* Entity::Add(const Args &...args) {
 
 template<typename T>
 T* Entity::Get() {
-	uint64_t cid = mgr->systems.GetComponentID(typeid(T*));
+	uint16_t cid = T::component_id;
 	if(components[cid] == false)
 		return nullptr;
 
@@ -298,13 +280,13 @@ T* Entity::Get() {
 template<typename T>
 void Entity::Remove() {
 	mgr->GetSystem<T>()->RemoveComponent(this);
-	components.set(mgr->systems.GetComponentID(typeid(T*)), false);
+	components.set(T::component_id, false);
 }
 
 template<std::size_t I, typename... Type>
 inline typename std::enable_if<I < sizeof...(Type), bool>::type
 Entity::HasComponent(const std::tuple<Type...> &t) {
-	uint64_t cid = mgr->systems.GetComponentID(typeid(std::get<I>(t)));
+	uint16_t cid = std::get<I>(t)->component_id;
 	bool ret = components[cid];
 
 	if(ret == true)
@@ -321,7 +303,7 @@ Entity::HasComponent(const std::tuple<Type...> &t) {
 
 template<typename First, typename... Types>
 bool Entity::Has() {
-	uint64_t cid = mgr->systems.GetComponentID(typeid(First*));
+	uint16_t cid = First::component_id;
 	bool ret = components[cid];
 
 	if(ret == false || sizeof...(Types) == 0)
@@ -339,7 +321,6 @@ void Entity::Destroy() {
  **************************************/
 
 EntityManager::Systems::Systems() {
-	id_lookup.reserve(MAX_COMPONENTS);
 	systems_prioritised.reserve(MAX_COMPONENTS);
 
 	for(size_t i = 0; i < MAX_COMPONENTS; ++i)
@@ -357,16 +338,13 @@ EntityManager::Systems::~Systems() {
 }
 
 void EntityManager::Systems::Add
-(EntityManager *mgr, const std::type_index &type, ISystem *sys)
+(EntityManager *mgr, uint16_t cid, ISystem *sys)
 {
-	uint64_t id = GetComponentID(type);
-
-	if(systems[id] != nullptr)
+	if(systems[cid] != nullptr)
 		return;
 
 	sys->mgr = mgr;
-	systems[id] = sys;
-	id_lookup[type] = id;
+	systems[cid] = sys;
 
 	size_t i;
 	for(i = 0; i < systems_prioritised.size(); ++i) {
@@ -377,26 +355,13 @@ void EntityManager::Systems::Add
 	systems_prioritised.insert(systems_prioritised.begin() + i, sys);
 }
 
-bool EntityManager::Systems::Has(const std::type_index &type) {
-	if(id_lookup.count(type) == 0)
-		return false;
-
-	ISystem *sys = systems[id_lookup.at(type)];
+bool EntityManager::Systems::Has(uint16_t cid) {
+	ISystem *sys = systems[cid];
 	return sys != nullptr;
 }
 
-ISystem* EntityManager::Systems::Get(const std::type_index &type) {
-	return systems[id_lookup.at(type)];
-}
-
-ISystem* EntityManager::Systems::Get(uint64_t id) {
-	return systems[id];
-}
-
-uint64_t EntityManager::Systems::GetComponentID(const std::type_index &type) {
-	if(id_lookup.count(type) == 0)
-		id_lookup[type] = ++component_ids;
-	return id_lookup[type];
+ISystem* EntityManager::Systems::Get(uint16_t cid) {
+	return systems[cid];
 }
 
 void EntityManager::Systems::Manage() {

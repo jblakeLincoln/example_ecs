@@ -2,7 +2,6 @@
 #define SYSTEM_H
 
 #include <stdint.h>
-#include <typeindex>
 #include <vector>
 
 /**
@@ -20,31 +19,18 @@ struct EntityManager;
 
 /**
  * ISystem is used for storing component-specific systems in generic
- * containers. The stored type_index refers to the component type.
+ * containers.
  */
 struct ISystem {
 friend Entity;
 friend EntityManager;
-private:
-	/**
-	 * Never used. "type" initialisation required for compilation.
-	 */
-	ISystem() :
-		type(typeid(ISystem))
-	{}
-
 protected:
 	/**
 	 * Mgr pointer is set to the owning manager by that manager.
 	 */
 	EntityManager *mgr = nullptr;
-	std::type_index type;
 
 	virtual ~ISystem() {}
-
-	ISystem(const std::type_index &t)
-		: type(t)
-	{}
 
 	/**
 	 * Perform update logic for components owned by the system.
@@ -76,10 +62,6 @@ protected:
 	std::vector<C> components;
 	std::vector<Entity*> entities;
 	size_t it = 0;
-
-	SystemBase()
-		: ISystem(typeid(C*))
-	{}
 
 	/**
 	 * Move a newly constructed component into the components list and store
@@ -158,14 +140,6 @@ protected:
 	 * Per-component override called immediately before component destruction.
 	 */
 	virtual void OnRemove(Entity &e, C &c) { };
-
-	/**
-	 * Used by non-implicit systems to get the typeid for the type contained,
-	 * rather than the system type.
-	 */
-	static std::type_index GetType() {
-		return typeid(C*);
-	}
 
 	/**
 	 * Return the compile time priority of the system - higher is sooner.

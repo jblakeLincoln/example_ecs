@@ -1,10 +1,10 @@
 #if 0
-time clang++ main.cpp                              \
+time clang++ main.cpp                                                          \
 	-Wall -Wswitch-default -Wcast-align -Wpointer-arith                        \
 	-Winline -Wundef -Wcast-qual -Wshadow -Wwrite-strings                      \
 	-Wunreachable-code -fno-common -Wunused-function                           \
 	-Wuninitialized -Wtype-limits -Wsign-compare -Wmissing-braces              \
-	-Wparentheses \
+	-Wparentheses -fno-rtti                                                    \
 	--std=c++11 -pedantic -o a.out && ./a.out
 exit
 #endif
@@ -12,7 +12,13 @@ exit
 #include <stdio.h>
 #include "ecs.h"
 
+enum ComponentID {
+	HEALTH,
+	POISON_DAMAGE
+};
+
 struct Health {
+	static constexpr uint16_t component_id = ComponentID::HEALTH;
 	int data;
 
 	Health(int h)
@@ -21,6 +27,7 @@ struct Health {
 };
 
 struct PoisonDamage {
+	static constexpr uint16_t component_id = ComponentID::POISON_DAMAGE;
 	int dmg_rate = 5;
 };
 
@@ -51,7 +58,8 @@ int main() {
 
 	/* Pretend game loop. */
 	for(size_t i = 0; i < 5; ++i) {
-		/* Can't assume the player is still in existence since systems can
+		/*
+		 * Can't assume the player is still in existence since systems can
 		 * affect its lifetime.
 		 */
 		player = mgr.GetByID(player_id);
