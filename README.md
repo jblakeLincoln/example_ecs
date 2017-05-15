@@ -1,29 +1,28 @@
 # Example ECS
 
-This is a small example of an entity component system using C++11 templates and
-RTTI. It allows game objects to be composed of data dynamically at runtime, and
-provides type safety and ease of use at compile time.
+This is a small example of an entity component system using C++11 templates.
 
-It is __not__ a complete working system. Key design decisions that are
-offputting are:
+There are two examples:
+ * The master branch uses RTTI for dynamically assigning component IDs at
+   runtime.
+ * The "no_rtti" branch compiles with -fno-rtti and requires component structs
+   to have a static integer component, but the iterface is otehrwise identical.
 
-* RTTI is an immediate breaking point for developers shipping a product.
-  However, it **is** useful for prototyping during development. It might
-  actually be fine for shipping too, but it's a point to consider.
+The system aims to be a flexible typesafe system with no difficult maintenance
+and no sly "gotcha"s.
+
+It is __not__ a complete working system, but a close approximation to something
+that could ship. Possible changes or alongside additions include:
+
 * Use of STL containers. The STL is used to make this a readable and accessible
   example, but make the compile time slower than it needs to be, and debug
   speed **far** too slow.
-
-It's also missing features, some of which are vital, others desirable. These
-include:
-
 * System Manage functions probably want some other data sent (like game timing)
 * Entity storage/lookup by string tag
 * Messaging/event integration
 * System separation (e.g. separate updates for logic and rendering)
-* Systems for sets of components
-
-However, it is a proof of concept that might spark some ideas.
+* Systems for sets of components (multi-component systems)
+* Possibly using RTTI to provide debug information on composed entities
 
 ## Components
 Components are simply sets of data that can be attached to an entity. They don't
