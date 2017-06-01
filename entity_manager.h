@@ -63,6 +63,11 @@ protected:
 		 * Retrieve system by component ID
 		 */
 		ISystem* Get(uint16_t cid);
+
+		/**
+		 * Remove a system and all associated components.
+		 */
+		void Delete(uint16_t cid);
 	} systems;
 
 	struct Entities {
@@ -133,6 +138,24 @@ public:
 	 */
 	template<typename T, typename ... Args>
 	void AddSystem(const Args &...args);
+
+	/**
+	 * Create a clone of a system, also copying all components and pointers
+	 * to entities.
+	 */
+	template<typename T>
+	System<T> *GetSystemCopy();
+
+	/**
+	 * Replaces an existing system with a provided system. Takes ownership
+	 * of the provided pointer.
+	 *
+	 * All entities will continue to make the same assumptions about the new
+	 * system as they did about the old one. The replacement system should
+	 * only modify the component data - not their storage, or entity pointers.
+	 */
+	template<typename T>
+	void ReplaceSystem(System<T> *nsys);
 
 	/**
 	 * Calls the Update function for all systems.
@@ -253,6 +276,23 @@ void EntityManager::AddSystem(const Args &...args)
 	systems.Add(this, T::component_id, new T(args...));
 }
 
+template<typename T>
+System<T> *EntityManager::GetSystemCopy()
+{
+	ISystem *sys = systems.Get(T::component_id);
+
+	if(sys == nullptr)
+		return nullptr;
+
+	return new System<T>(*static_cast<System<T>*>(sys));
+}
+
+template<typename T>
+void EntityManager::ReplaceSystem(System<T> *new_sys) {
+	systems.Delete(T::component_id);
+	systems.Add(this, T::component_id, new_sys);
+}
+
 /**************************************
  * Entity functions
  **************************************/
@@ -362,6 +402,19 @@ bool EntityManager::Systems::Has(uint16_t cid) {
 
 ISystem* EntityManager::Systems::Get(uint16_t cid) {
 	return systems[cid];
+}
+
+void EntityManager::Systems::Delete(uint16_t cid) {
+	if(systems[cid] == nullptr)
+		return;
+
+	for(size_t i = 0; i < systems_prioritised.size(); ++i) {
+		if(systems_prioritised[i] == systems[cid])
+			systems_prioritised.erase(systems_prioritised.begin() + i);
+	}
+
+	delete systems[cid];
+	systems[cid] = nullptr;
 }
 
 void EntityManager::Systems::Manage() {

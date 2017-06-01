@@ -71,6 +71,16 @@ int main() {
 
 		/* Processes systems defined above, usually called once per frame. */
 		mgr.Manage();
+
+		/*
+		 * Every update, we can retrieve a copy of a system, modify it, and
+		 * post it. This is intended to be able to swap values in and out
+		 * for interpolating during rendering.
+		 */
+		System<Health> *h = mgr.GetSystemCopy<Health>();
+		for(size_t j = 0; j < h->components.size(); ++j)
+			h->components[j].data += 1;
+		mgr.ReplaceSystem<Health>(h);
 	}
 
 	return 0;

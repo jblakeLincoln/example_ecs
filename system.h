@@ -54,6 +54,9 @@ struct SystemBase : ISystem {
 friend Entity;
 friend EntityManager;
 protected:
+	size_t it = 0;
+
+public:
 	/**
 	 * Components are stored contiguously in memory. "components" and "ids"
 	 * mirror each other, with entity IDs relating to components at the same
@@ -61,7 +64,6 @@ protected:
 	 */
 	std::vector<C> components;
 	std::vector<Entity*> entities;
-	size_t it = 0;
 
 	/**
 	 * Move a newly constructed component into the components list and store
